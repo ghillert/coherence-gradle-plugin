@@ -1,0 +1,40 @@
+plugins {
+    id 'groovy'
+    id 'java-gradle-plugin'
+    id 'maven-publish'
+}
+
+group = 'com.oracle.coherence'
+version = '1.0.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+publishing {
+    repositories {
+        maven {
+            url "/Users/hillert/.m2/repository"
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.oracle.coherence.ce:coherence:22.09'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
+    testImplementation 'commons-io:commons-io:2.11.0'
+}
+
+gradlePlugin {
+    plugins {
+        coherencePof {
+            id = 'com.oracle.coherence.gradle'
+            implementationClass = 'com.oracle.coherence.gradle.CoherencePlugin'
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}

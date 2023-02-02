@@ -1,0 +1,23 @@
+plugins {
+    id 'java'
+    id 'com.oracle.coherence.gradle'
+}
+
+group = 'com.example'
+version = '1.0.0-SNAPSHOT'
+sourceCompatibility = '17'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.oracle.coherence.ce:coherence:22.09'
+}
+
+coherencePof {
+    debug = false
+    instrumentTestClasses = true
+}
+

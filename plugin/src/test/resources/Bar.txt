@@ -1,0 +1,8 @@
+import com.tangosol.io.pof.schema.annotation.PortableType;
+
+@PortableType(id=1001)
+public class Bar {
+    public String getBeer() {
+        return "IPA";
+    }
+}

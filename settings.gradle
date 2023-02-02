@@ -1,2 +1,5 @@
-rootProject.name = 'coherence-gradle-plugin'
+rootProject.name = 'coherence-gradle-plugin-parent'
+
+include 'sample'
+includeBuild 'plugin'
 
