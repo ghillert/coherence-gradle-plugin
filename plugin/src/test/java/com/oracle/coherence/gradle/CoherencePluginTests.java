@@ -165,4 +165,104 @@ public class CoherencePluginTests
         assertThatClassIsPofIntrumented(foo);
         assertThatClassIsPofIntrumented(bar);
         }
+
+        @Test
+        void applyCoherenceGradlePluginWithClassAndSchema()
+        {
+
+            final File buildFile = new File(gradleProjectRootDirectory, "build.gradle");
+
+            appendToFile(buildFile,
+                    """
+                            plugins {
+                              id 'java'
+                              id 'com.oracle.coherence.gradle'
+                            }
+                            repositories {
+                                mavenCentral()
+                            }
+                            dependencies {
+                                implementation 'com.oracle.coherence.ce:coherence:22.09'
+                            }
+                            """
+            );
+
+            copyFileTo("/Foo.txt", gradleProjectRootDirectory,
+                    "/src/main/java", "Foo.java");
+            copyFileTo("/Bar.txt", gradleProjectRootDirectory,
+                    "/src/main/java", "Bar.java");
+            copyFileTo("/Color.txt", gradleProjectRootDirectory,
+                    "/src/main/java", "Color.java");
+            copyFileTo("/test-schema.xml", gradleProjectRootDirectory,
+                    "/src/main/resources/META-INF", "schema.xml");
+
+            BuildResult gradleResult = GradleRunner.create()
+                    .withProjectDir(gradleProjectRootDirectory)
+                    .withArguments("coherencePof")
+                    .withDebug(true)
+                    .withPluginClasspath()
+                    .build();
+
+            LOGGER.error(
+                    "\n-------- [ Gradle output] -------->>>>\n"
+                            + gradleResult.getOutput()
+                            + "<<<<------------------------------------"
+            );
+            System.out.println(gradleResult.getOutput());
+            assertThat(gradleResult.getOutput()).contains("SUCCESS");
+            assertThat(gradleResult.task(":coherencePof").getOutcome().name()).isEqualTo("SUCCESS");
+
+            Class foo = getPofClass(this.gradleProjectRootDirectory, "Foo", "build/classes/java/main/");
+            assertThatClassIsPofIntrumented(foo);
+        }
+
+        @Test
+        void applyCoherenceGradlePluginWithJarDependency()
+        {
+
+            final File buildFile = new File(gradleProjectRootDirectory, "build.gradle");
+
+            appendToFile(buildFile,
+                    """
+                            plugins {
+                              id 'java'
+                              id 'com.oracle.coherence.gradle'
+                            }
+                            repositories {
+                                mavenCentral()
+                            }
+                            dependencies {
+                                implementation 'com.oracle.coherence.ce:coherence:22.09'
+                                implementation files('lib/foo.jar')
+                            }
+                            coherencePof {
+                                debug = true
+                            }
+                            """
+            );
+
+            copyFileTo("/foo.jar", gradleProjectRootDirectory,
+                    "/lib", "foo.jar");
+            copyFileTo("/Bar.txt", gradleProjectRootDirectory,
+                    "/src/main/java", "Bar.java");
+
+            BuildResult gradleResult = GradleRunner.create()
+                    .withProjectDir(gradleProjectRootDirectory)
+                    .withArguments("coherencePof")
+                    .withDebug(true)
+                    .withPluginClasspath()
+                    .build();
+
+            LOGGER.error(
+                    "\n-------- [ Gradle output] -------->>>>\n"
+                            + gradleResult.getOutput()
+                            + "<<<<------------------------------------"
+            );
+            System.out.println(gradleResult.getOutput());
+            assertThat(gradleResult.getOutput()).contains("SUCCESS");
+            assertThat(gradleResult.task(":coherencePof").getOutcome().name()).isEqualTo("SUCCESS");
+
+            Class foo = getPofClass(this.gradleProjectRootDirectory, "Foo", "build/classes/java/main/");
+            assertThatClassIsPofIntrumented(foo);
+        }
     }

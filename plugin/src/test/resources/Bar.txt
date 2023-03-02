@@ -1,8 +1,17 @@
 import com.tangosol.io.pof.schema.annotation.PortableType;
+import com.tangosol.io.pof.schema.annotation.Portable;
 
 @PortableType(id=1001)
-public class Bar {
+public class Bar extends Foo {
+
+    @Portable
+    private Color beerColor;
+
     public String getBeer() {
         return "IPA";
+    }
+
+    public Color getColor() {
+        return beerColor;
     }
 }

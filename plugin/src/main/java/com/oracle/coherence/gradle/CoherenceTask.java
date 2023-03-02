@@ -14,6 +14,7 @@ import com.tangosol.io.pof.generator.PortableTypeGenerator;
 import com.tangosol.io.pof.schema.annotation.PortableType;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.file.Directory;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.provider.Property;
@@ -52,22 +53,43 @@ abstract class CoherenceTask extends DefaultTask
      @Optional
      abstract Property<File> getTestClassesDirectory();
 
+     @InputFiles
+     @Optional
+     abstract Property<File> getTestResourcesDirectory();
+
     @InputFiles
     @Optional
     abstract Property<File> getMainClassesDirectory();
+
+    @InputFiles
+    @Optional
+    abstract Property<File> getMainResourcesDirectory();
 
     @Inject
     public CoherenceTask(Project project)
         {
 
+        getLogger().info("Setting up Task property conventions.");
         getDebug().convention(false);
         getInstrumentTestClasses().convention(false);
 
-        final Directory javaMainOutputDir = PluginUtils.getJavaMainOutputDir(project);
-        getMainClassesDirectory().convention(javaMainOutputDir.getAsFile());
+        final Directory mainJavaOutputDir = PluginUtils.getMainJavaOutputDir(project);
+        getMainClassesDirectory().convention(mainJavaOutputDir.getAsFile());
 
-        final Directory javaTestOutputDir = PluginUtils.getJavaTestOutputDir(project);
-        getTestClassesDirectory().convention(javaTestOutputDir.getAsFile());
+        final Directory testJavaOutputDir = PluginUtils.getTestJavaOutputDir(project);
+        getTestClassesDirectory().convention(testJavaOutputDir.getAsFile());
+
+        final File mainResourcesOutputDir = PluginUtils.getMainResourcesOutputDir(project);
+        if (mainResourcesOutputDir != null)
+            {
+            getMainResourcesDirectory().convention(mainResourcesOutputDir);
+            }
+
+        final File testResourcesOutputDir = PluginUtils.getTestResourcesOutputDir(project);
+        if (testResourcesOutputDir != null)
+            {
+            getTestResourcesDirectory().convention(testResourcesOutputDir);
+            }
 
         }
 
@@ -75,37 +97,53 @@ abstract class CoherenceTask extends DefaultTask
     public void instrumentPofClasses()
         {
 
-        this.getProject().getLogger().info("Start executing Gradle task instrumentPofClasses...");
-        this.getProject().getLogger().info("The following configuration properties are configured:");
-        this.getProject().getLogger().info("Property debug = {}", this.getDebug().get());
-        this.getProject().getLogger().info("Property instrumentTestClasses = {}", this.getInstrumentTestClasses().get());
-        this.getProject().getLogger().info("Property testClassesDirectory = {}", this.getTestClassesDirectory());
-        this.getProject().getLogger().info("Property mainClassesDirectory = {}", this.getMainClassesDirectory());
+        getLogger().info("Start executing Gradle task instrumentPofClasses...");
+        getLogger().info("The following configuration properties are configured:");
+        getLogger().info("Property debug = {}", this.getDebug().get());
+        getLogger().info("Property instrumentTestClasses = {}", this.getInstrumentTestClasses().get());
+        getLogger().info("Property testClassesDirectory = {}", this.getTestClassesDirectory());
+        getLogger().info("Property mainClassesDirectory = {}", this.getMainClassesDirectory());
 
         ClassFileSchemaSource source = new ClassFileSchemaSource();
         List<File> listInstrument = new ArrayList<>();
-        SchemaBuilder builder = new SchemaBuilder();
+        SchemaBuilder schemaBuilder = new SchemaBuilder();
 
-        if (getMainClassesDirectory().isPresent()
-            && getMainClassesDirectory().get().exists())
+        List<File> classesDirectories = new ArrayList<>();
+
+        addSchemaSourceIfExists(schemaBuilder, getTestResourcesDirectory());
+        addSchemaSourceIfExists(schemaBuilder, getMainResourcesDirectory());
+
+        if (getTestClassesDirectory().isPresent()
+            && getTestClassesDirectory().get().exists())
             {
-            File mainClassesDirectoryAsFile = getMainClassesDirectory().get();
-            source.withClassesFromDirectory(mainClassesDirectoryAsFile)
-                    .withTypeFilter(hasAnnotation(PortableType.class))
-                    .withMissingPropertiesAsObject();
-
-            File xmlSchema = Paths.get(mainClassesDirectoryAsFile.getPath(), "META-INF", "schema.xml").toFile();
-            if (xmlSchema.exists())
-                {
-                builder.addSchemaSource(new XmlSchemaSource(xmlSchema));
-                }
-
-            listInstrument.add(mainClassesDirectoryAsFile);
+            File testClassesDirectoryAsFile = getTestClassesDirectory().get();
+            classesDirectories.add(testClassesDirectoryAsFile);
             }
         else
             {
-            this.getProject().getLogger().error("PortableTypeGenerator skipping main classes directory as it does not exist.");
+            getLogger().error("PortableTypeGenerator skipping test classes directory as it does not exist.");
             }
+
+        if (getMainClassesDirectory().isPresent()
+                && getMainClassesDirectory().get().exists())
+            {
+            File mainClassesDirectoryAsFile = getMainClassesDirectory().get();
+            classesDirectories.add(mainClassesDirectoryAsFile);
+            }
+        else
+            {
+            getLogger().error("PortableTypeGenerator skipping main classes directory as it does not exist.");
+            }
+
+        if (!classesDirectories.isEmpty()) {
+            source.withTypeFilter(hasAnnotation(PortableType.class))
+                  .withMissingPropertiesAsObject();
+            for (File classesDir : classesDirectories)
+                {
+                source.withClassesFromDirectory(classesDir);
+                listInstrument.add(classesDir);
+                }
+        }
 
         if (!listInstrument.isEmpty())
             {
@@ -117,15 +155,15 @@ abstract class CoherenceTask extends DefaultTask
 
             listDeps.stream()
                     .filter(File::isDirectory)
-                    .peek(f -> getLogger().debug("Adding classes from " + f + " to schema"))
+                    .peek(f -> getLogger().lifecycle("Adding classes from " + f + " to schema"))
                     .forEach(dependencies::withClassesFromDirectory);
 
             listDeps.stream()
                     .filter(f -> f.isFile() && f.getName().endsWith(".jar"))
-                    .peek(f -> getLogger().debug("Adding classes from " + f + " to schema"))
+                    .peek(f -> getLogger().lifecycle("Adding classes from " + f + " to schema"))
                     .forEach(dependencies::withClassesFromJarFile);
 
-            Schema schema = builder
+            Schema schema = schemaBuilder
                     .addSchemaSource(dependencies)
                     .addSchemaSource(source)
                     .build();
@@ -144,49 +182,52 @@ abstract class CoherenceTask extends DefaultTask
                 }
             }
         }
+
+        private void addSchemaSourceIfExists(SchemaBuilder builder, Property<File> resourcesDirectory)
+            {
+                if (resourcesDirectory.isPresent())
+                    {
+                        File resourcesDirectoryAsFile = resourcesDirectory.get();
+
+                        if (resourcesDirectoryAsFile.exists())
+                            {
+                                File xmlSchema = Paths.get(resourcesDirectoryAsFile.getPath(), "META-INF", "schema.xml").toFile();
+                                if (xmlSchema.exists())
+                                    {
+                                    builder.addSchemaSource(new XmlSchemaSource(xmlSchema));
+                                    }
+                                else
+                                    {
+                                    getLogger().info("No schema.xml file found at {}", xmlSchema.getAbsolutePath());
+                                    }
+                        }
+                        else {
+                            getLogger().info("The specified resources directory '{}' does not exist.");
+                        }
+                    }
+                else
+                    {
+                        getLogger().info("The resources directory property is not present.");
+                    }
+            }
+
     private List<File> resolveDependencies() //throws ArtifactResolverException
         {
         List<File> listArtifacts = new ArrayList<>();
-        Logger log        = this.getProject().getLogger();
 
-            //TODO
-//        for (Artifact artifact : m_project.getArtifacts())
-//        {
-//            if (artifact.getScope().equals(Artifact.SCOPE_TEST) && !f_fTests)
-//            {
-//                continue;
-//            }
-//
-//            String sArtifactId = artifact.getArtifactId();
-//
-//            if (!artifact.isResolved())
-//            {
-//                log.debug("Resolving artifact " + artifact);
-//
-//                ProjectBuildingRequest req = new DefaultProjectBuildingRequest()
-//                        .setRepositorySession(m_session)
-//                        .setLocalRepository(m_localRepository)
-//                        .setRemoteRepositories(m_listRemoteRepositories);
-//
-//                ArtifactResult result = m_artifactResolver.resolveArtifact(req, artifact);
-//                artifact = result.getArtifact();
-//            }
-//
-//            // The file should exists, but we never know.
-//            File file = artifact.getFile();
-//            if (file == null || !file.exists())
-//            {
-//                log.warn("Artifact " + sArtifactId
-//                        + " has no attached file. Its content will not be copied to the target model directory.");
-//            }
-//            else
-//            {
-//                log.debug("Adding file: artifact=" + artifact + " file=" + file);
-//
-//                listArtifacts.add(file);
-//            }
-//        }
+        Configuration configuration = this.getProject().getConfigurations().getByName("runtimeClasspath"); // TODO May need to be configurable
+        configuration.forEach(file -> {
+            getLogger().info("Adding dependency '{}'.", file.getAbsolutePath());
+            if (file.exists()) {
+                listArtifacts.add(file);
+            }
+            else
+            {
+                getLogger().info("Dependency '{}' does not exist.", file.getAbsolutePath());
+            }
 
+        });
+        getLogger().lifecycle("Resolved {} dependencies.", listArtifacts.size());
         return listArtifacts;
         }
     }
