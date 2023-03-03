@@ -41,7 +41,7 @@ public class CoherencePlugin implements Plugin<Project>
         project.getTasks().register(POF_TASK_NAME, CoherenceTask.class, coherencePofTask ->
             {
 
-            coherencePofTask.dependsOn("compileJava");
+            coherencePofTask.dependsOn("compileJava", "processResources");
 
             final CoherenceExtension coherenceExtension = project.getExtensions().getByType(CoherenceExtension.class);
 
@@ -57,7 +57,7 @@ public class CoherencePlugin implements Plugin<Project>
 
             if (coherenceExtension.getInstrumentTestClasses().isPresent())
                 {
-                coherencePofTask.dependsOn("compileTestJava");
+                coherencePofTask.dependsOn("compileTestJava", "processTestResources");
                 coherencePofTask.getInstrumentTestClasses().set(coherenceExtension.getInstrumentTestClasses());
                 }
 

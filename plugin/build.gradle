@@ -37,4 +37,8 @@ gradlePlugin {
 
 test {
     useJUnitPlatform()
+
+    testLogging {
+        showStandardStreams = true
+    }
 }

@@ -72,8 +72,11 @@ coherencePof {
 
 ==== Enable Debugging
 
-Set the boolean `debug` property to `true` in order to provide additional logging output in regards the instrumented classes.
+Set the boolean `debug` property to `true` in order to instruct the underlying `PortableTypeGenerator` to generate debug
+code in regards the instrumented classes.
+
 If not specified, this property _defaults_ to `false`.
+
 
 ==== Instrumentation of Test Classes
 

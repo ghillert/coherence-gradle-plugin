@@ -29,13 +29,13 @@ public class GradleLogger implements PortableTypeGenerator.Logger
     @Override
     public void debug(String message)
         {
-        this.logger.warn(message);
+        this.logger.info(message);
         }
 
     @Override
     public void info(String message)
         {
-        this.logger.warn(message);
+        this.logger.lifecycle(message);
         }
 
     // ----- data members -----------------------------------------------

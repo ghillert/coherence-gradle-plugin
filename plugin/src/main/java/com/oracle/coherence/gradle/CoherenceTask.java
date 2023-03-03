@@ -97,7 +97,7 @@ abstract class CoherenceTask extends DefaultTask
     public void instrumentPofClasses()
         {
 
-        getLogger().info("Start executing Gradle task instrumentPofClasses...");
+        getLogger().lifecycle("Start executing Gradle task instrumentPofClasses...");
         getLogger().info("The following configuration properties are configured:");
         getLogger().info("Property debug = {}", this.getDebug().get());
         getLogger().info("Property instrumentTestClasses = {}", this.getInstrumentTestClasses().get());
@@ -194,6 +194,7 @@ abstract class CoherenceTask extends DefaultTask
                                 File xmlSchema = Paths.get(resourcesDirectoryAsFile.getPath(), "META-INF", "schema.xml").toFile();
                                 if (xmlSchema.exists())
                                     {
+                                    getLogger().lifecycle("Add XmlSchemaSource '{}'.", xmlSchema.getAbsolutePath());
                                     builder.addSchemaSource(new XmlSchemaSource(xmlSchema));
                                     }
                                 else
@@ -218,13 +219,14 @@ abstract class CoherenceTask extends DefaultTask
         Configuration configuration = this.getProject().getConfigurations().getByName("runtimeClasspath"); // TODO May need to be configurable
         configuration.forEach(file -> {
             getLogger().info("Adding dependency '{}'.", file.getAbsolutePath());
-            if (file.exists()) {
+            if (file.exists())
+                {
                 listArtifacts.add(file);
-            }
+                }
             else
-            {
+                {
                 getLogger().info("Dependency '{}' does not exist.", file.getAbsolutePath());
-            }
+                }
 
         });
         getLogger().lifecycle("Resolved {} dependencies.", listArtifacts.size());
