@@ -13,7 +13,7 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.oracle.coherence.ce:coherence:22.09'
+    implementation 'com.oracle.coherence.ce:coherence:23.03'
 }
 
 coherencePof {
