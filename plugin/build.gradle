@@ -20,7 +20,7 @@ publishing {
 }
 
 dependencies {
-    implementation 'com.oracle.coherence.ce:coherence:22.09'
+    implementation 'com.oracle.coherence.ce:coherence:23.03'
     testImplementation 'org.junit.jupiter:junit-jupiter:5.9.2'
     testImplementation 'org.assertj:assertj-core:3.24.2'
     testImplementation 'commons-io:commons-io:2.11.0'
